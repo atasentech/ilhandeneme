@@ -1,0 +1,71 @@
+name: BURAYA BAK
+on: 
+  release:
+    types: [published]
+
+jobs:
+  release_tag:
+    # This job only runs for pull request comments
+    name: Release Tag
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: 
+        app: [main, organizations, otc, pm]
+    outputs:
+      tag: ${{ steps.split.outputs.fragment }}
+    steps:
+      - name: Get Release Tag
+        id: release-tag
+        run: |
+          echo ::set-output name=tag::$(echo $GITHUB_REF | cut -d "[" -f2 | cut -d "]" -f1)
+        env:
+          GITHUB_REF: $GITHUB_REF
+
+      - name: Split tag name
+        env:
+          TAG: ${{ steps.release-tag.outputs.tag }}
+        id: split
+        run: echo "::set-output name=fragment::${TAG#*-}"
+
+      - name: Upper case
+        id: string
+        uses: ASzc/change-string-case-action@v5
+        with:
+          string: ${{ matrix.app }}
+      
+      - name: Print
+        run: echo ${{ steps.string.outputs.capitalized }}
+
+      - name: Print Fragment
+        env: 
+          # ENVIRONMENT: ${{ steps.string.outputs.capitalized }}
+          ENVIRONMENT: ${{ matrix.app }}
+        run: |
+          echo "${{ secrets[format('MY_{0}_SECRET', env.ENVIRONMENT )] }}"
+  
+  setup: 
+    name: Setup
+    runs-on: ubuntu-latest
+    outputs:
+      registry: ${{ steps.split.outputs.fragment }}
+    steps:
+    - name: Split tag name
+      id: split
+      run: echo "::set-output name=fragment::deneme"
+
+  deploy:
+    needs: [release_tag, setup]
+    name: Deploy
+    runs-on: ubuntu-latest
+    env:
+      TAG: PM
+    steps:
+      - name: Print Hey
+        run: |
+          echo ${{needs.release_tag.outputs.tag}}
+
+
+
+# ${{ secrets[format('{0}_NETLIFY_SITE_ID', github.event.inputs.lane)] }}
+
+# ${{ secrets[format('NEW_RELIC_{0}_APPLICATION_ID', ${{ steps.string.outputs.uppercase }} }}
